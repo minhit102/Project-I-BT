@@ -1,0 +1,135 @@
+/*
+Description
+The data about bank transactions consists of a sequence of transactions: the information of each transaction has the following format:
+                                                                    <from_account>   <to_account>   <money>   <time_point>   <atm>
+In which:
+•	<from_account>: the account from which money is transferred (which is a string of length from 6 to 20 )
+•	<to_account>: the account which receives money in the transaction (which is a string of length from 6 to 20)
+•	<money>: amount of money transferred in the transaction (which is an integer from 1 to 10000)
+•	<time_point>: the time point at which the transaction is performed, it is a string under the format HH:MM:SS  (hour: minute: second)
+•	<atm>: the code of the ATM where the transaction is taken (a string of length from 3 to 10)
+Example: T00112233445 T001234002 2000 08:36:25 BIDV (at the ATM BIDV, account T00112233445 transfers 2000$ to account T001234002 at time point 08:36:25 (08 hour, 36 minutes, 25 seconds) 
+A transaction cycle of length k starting from account a1 is defined to be a sequence of distinct account a1, a2, …, ak  in which there are transactions from account a1 to a2, from a2 to a3, …, from ak to a1.
+Write a program that process the following queries: 
+?number_transactions: compute the total number of transactions of the data
+?total_money_transaction: compute the total amount of money of transactions  
+?list_sorted_accounts: compute the sequence of bank accounts (including sending and receiving accounts) appearing in the transaction (sorted in an increasing (alphabetical) order)  
+?total_money_transaction_from <account>: compute the total amount of money transferred from the account <account>  
+?inspect_cycle <account> k : return 1 if there is a transaction cycle of length k, starting from <account>, and return 0, otherwise
+Input (stdin)
+The input consists of 2 blocks of information: the data block and the query block
+•	The data block consists of lines:
+o	Each line contains the information about a transaction described above
+o	The data is terminated by a line containing #
+•	The query block consists of lines:
+o	Each line is a query described above
+o	The query block is terminated by a line containing #
+
+Output (stdout)
+•	Print to stdout (in each line) the result of each query described above
+
+*/
+#include <bits/stdc++.h>
+using namespace std;
+
+typedef struct Transaction {
+    string fromAccount;
+    string toAccount;
+    int amount;
+    string timestamp;
+    string atmID;
+} Transaction;
+
+int totalMoney = 0;
+unordered_map<string, int> totalMoneyFrom;
+set<string> uniqueAccounts;
+
+void listSortedAccounts(const vector<Transaction> &transactions) {
+    for (auto account : uniqueAccounts) {
+        cout << account << " ";
+    }
+}
+
+bool hasCycle(const vector<Transaction>& transactions, string startAccount, string currentAccount, int k, set<string>& visited) {
+    if (k == 0 ) {
+        return (currentAccount == startAccount);
+    }
+    if (k < 0 || visited.find(currentAccount) != visited.end()) {
+        return false;
+    }
+
+    visited.insert(currentAccount);
+
+    for (const Transaction& transaction : transactions) {
+        if (transaction.fromAccount == currentAccount) {
+            if (hasCycle(transactions, startAccount, transaction.toAccount, k - 1, visited)) {
+                visited.erase(currentAccount);  // Reset visited flag
+                return true;
+            }
+        }
+    }
+
+    visited.erase(currentAccount);  // Reset visited flag
+    return false;
+}
+
+int inspectCycle(const vector<Transaction>& transactions, string account, int k) {
+    set<string> visited;
+    return hasCycle(transactions, account, account, k, visited) ? 1 : 0;
+}
+
+int main() {
+    vector<Transaction> transactionData;
+    vector<string> commands;
+    string input;
+
+    while (true) {
+        getline(cin, input);
+        if (input == "#") break;
+        Transaction tempTransaction;
+        istringstream iss(input);
+        iss >> tempTransaction.fromAccount >> tempTransaction.toAccount >> tempTransaction.amount >> tempTransaction.timestamp >> tempTransaction.atmID;
+
+        totalMoney += tempTransaction.amount;
+        totalMoneyFrom[tempTransaction.fromAccount] += tempTransaction.amount;
+
+        uniqueAccounts.insert(tempTransaction.fromAccount);
+        uniqueAccounts.insert(tempTransaction.toAccount);
+
+        transactionData.push_back(tempTransaction);
+    }
+
+    while (true) {
+        getline(cin, input);
+        if (input == "#") break;
+        commands.push_back(input);
+    }
+
+    for (auto command : commands) {
+        string operation, account;
+        int k;
+        istringstream iss(command);
+        iss >> operation;
+        int numberOfTransactions = transactionData.size();
+
+        if (operation == "?number_transactions") {
+            cout << numberOfTransactions << endl;
+        }
+        if (operation == "?total_money_transaction") {
+            cout << totalMoney << endl;
+        }
+        if (operation == "?list_sorted_accounts") {
+            listSortedAccounts(transactionData);
+            cout << endl;
+        }
+        if (operation == "?total_money_transaction_from") {
+            iss >> account;
+            cout << totalMoneyFrom[account] << endl;
+        }
+        if (operation == "?inspect_cycle") {
+            iss >> account >> k;
+            cout << inspectCycle(transactionData, account, k) << endl;
+        }
+    }
+    return 0;
+}
